@@ -24,11 +24,19 @@
     saveBtn.style.cssText = 'padding:10px 22px;background:#007aff;color:#fff;border:none;border-radius:20px;font-size:14px;cursor:pointer;box-shadow:0 4px 16px rgba(0,122,255,0.3);font-family:inherit;font-weight:500;transition:transform.15s,box-shadow.15s';
     saveBtn.onmouseover = function() { this.style.transform = 'scale(1.05)'; };
     saveBtn.onmouseout = function() { this.style.transform = 'scale(1)'; };
-    saveBtn.onclick = function() {
+    saveBtn.onclick = async function() {
+      if (saveInProgress) return;
+      saveInProgress = true;
       this.textContent = '⏳ 保存中...';
       this.disabled = true;
-      syncWysiwygToMarkdown();
-      saveToGitHub();
+      try {
+        syncWysiwygToMarkdown();
+        await saveToGitHub();
+      } catch (e) {
+        showToast('保存出错: ' + e.message);
+        reenableSaveBtn();
+      }
+      saveInProgress = false;
     };
 
     var closeBtn = document.createElement('button');
@@ -53,6 +61,7 @@
   }
 
   var showSource = false;
+  var saveInProgress = false;
 
   function renderEditor() {
     var container = document.getElementById('articleContent');
@@ -329,8 +338,15 @@
         sha = data.sha;
       }
 
-      // PUT new content
-      var content = btoa(unescape(encodeURIComponent(currentContent)));
+      // PUT new content — proper UTF-8 base64
+      function utf8ToB64(str) {
+        var encoder = new TextEncoder();
+        var bytes = encoder.encode(str);
+        var binary = '';
+        for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        return btoa(binary);
+      }
+      var content = utf8ToB64(currentContent);
       var body = {
         message: 'update: ' + path,
         content: content,
@@ -354,8 +370,10 @@
         setTimeout(function() { showEditorSaved(path); }, 1200);
       } else {
         var err = await putResp.text();
+        var errMsg = '保存失败';
+        try { var errJson = JSON.parse(err); errMsg += ': ' + (errJson.message || err.substring(0, 120)); } catch(e2) { errMsg += ': ' + err.substring(0, 120); }
         if (status) { status.textContent = '✗ 保存失败'; status.style.color = '#ff3b30'; }
-        showToast('保存失败: ' + (err.substring(0, 100) || '未知错误'));
+        showToast(errMsg);
         reenableSaveBtn();
       }
     } catch (e) {
