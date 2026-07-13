@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>个人笔记</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <nav id="topNav">
+    <button id="menuToggle" aria-label="切换菜单">☰</button>
+    <span id="logo">个人笔记</span>
+    <div id="searchBox">
+      <input type="text" id="searchInput" placeholder="搜索笔记..." />
+    </div>
+  </nav>
+
+  <div id="mainLayout">
+    <aside id="sidebar">
+      <div id="fileTree"></div>
+    </aside>
+
+    <main id="content">
+      <div id="progressBar" style="display:none">
+        <div id="progressFill"></div>
+        <span id="progressText"></span>
+      </div>
+      <div id="breadcrumb"></div>
+      <div id="articleContent">
+        <div id="welcomeMessage">
+          <h1>个人笔记</h1>
+          <p>推送 .md 文件到 notes/ 目录即可自动加载</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<div id="sidebarOverlay"></div>
+
+<script src="js/markdown.js"></script>
+<script src="js/cache.js"></script>
+<script src="js/search.js"></script>
+<script src="js/file-tree.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

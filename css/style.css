@@ -1,0 +1,348 @@
+:root {
+  --bg: #ffffff;
+  --sidebar-bg: #f7f8fa;
+  --sidebar-width: 280px;
+  --nav-height: 52px;
+  --text-primary: #262626;
+  --text-secondary: #8c8c8c;
+  --text-tertiary: #bfbfbf;
+  --accent: #00a96e;
+  --accent-hover: #008f5e;
+  --border: #e8e8e8;
+  --hover-bg: #eef0f2;
+  --active-bg: #e6f7f0;
+  --code-bg: #f5f5f5;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-mono: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+/* ─── Top Nav ─── */
+#topNav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: var(--nav-height);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+}
+
+#menuToggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  color: var(--text-primary);
+  border-radius: 4px;
+}
+#menuToggle:hover { background: var(--hover-bg); }
+
+#logo {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+#searchBox {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  background: var(--sidebar-bg);
+  border-radius: 6px;
+  padding: 6px 12px;
+  width: 240px;
+}
+#searchBox input {
+  border: none; background: none; outline: none;
+  font-size: 13px; color: var(--text-primary);
+  width: 100%; font-family: inherit;
+}
+#searchBox input::placeholder { color: var(--text-tertiary); }
+
+/* ─── Main Layout ─── */
+#mainLayout {
+  display: flex;
+  padding-top: var(--nav-height);
+  min-height: 100vh;
+}
+
+/* ─── Sidebar ─── */
+#sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  height: calc(100vh - var(--nav-height));
+  position: sticky;
+  top: var(--nav-height);
+  padding: 12px 0;
+}
+
+/* ─── File Tree ─── */
+.tree-node {
+  cursor: pointer;
+  user-select: none;
+}
+.tree-row {
+  display: flex;
+  align-items: center;
+  padding: 6px 16px;
+  font-size: 14px;
+  gap: 4px;
+  color: var(--text-primary);
+  transition: background .1s;
+}
+.tree-row:hover { background: var(--hover-bg); }
+.tree-row.active { background: var(--active-bg); color: var(--accent); font-weight: 600; }
+.tree-icon { width: 18px; text-align: center; flex-shrink: 0; font-size: 12px; color: var(--text-secondary); }
+.tree-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-arrow {
+  display: inline-block;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  transition: transform .15s;
+}
+.tree-arrow.open { transform: rotate(90deg); }
+.tree-children { display: none; }
+.tree-children.open { display: block; }
+.tree-children .tree-row { padding-left: 40px; }
+.tree-children .tree-children .tree-row { padding-left: 64px; }
+.tree-children .tree-children .tree-children .tree-row { padding-left: 88px; }
+
+/* ─── Content Area ─── */
+#content {
+  flex: 1;
+  padding: 32px 40px;
+  max-width: 860px;
+  overflow-y: auto;
+}
+
+/* ─── Breadcrumb ─── */
+#breadcrumb {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  display: none;
+}
+#breadcrumb span { color: var(--text-tertiary); margin: 0 4px; }
+
+/* ─── Welcome Message ─── */
+#welcomeMessage {
+  text-align: center;
+  padding: 120px 24px;
+  color: var(--text-tertiary);
+}
+#welcomeMessage h1 {
+  font-size: 28px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+#welcomeMessage p { font-size: 15px; }
+
+/* ─── Article ─── */
+#articleContent h1 {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+#articleContent h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 28px 0 12px;
+}
+#articleContent h3 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 20px 0 10px;
+}
+#articleContent p {
+  margin-bottom: 14px;
+  line-height: 1.8;
+}
+#articleContent code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+#articleContent pre {
+  background: var(--code-bg);
+  padding: 16px 20px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin-bottom: 14px;
+}
+#articleContent pre code {
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+#articleContent ul, #articleContent ol {
+  margin-bottom: 14px;
+  padding-left: 24px;
+}
+#articleContent li { margin-bottom: 4px; }
+#articleContent blockquote {
+  border-left: 4px solid var(--accent);
+  padding: 8px 16px;
+  margin-bottom: 14px;
+  color: var(--text-secondary);
+  background: var(--sidebar-bg);
+  border-radius: 0 4px 4px 0;
+}
+#articleContent img {
+  max-width: 100%;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+#articleContent a { color: var(--accent); text-decoration: none; }
+#articleContent a:hover { text-decoration: underline; }
+#articleContent table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 14px;
+}
+#articleContent th, #articleContent td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 14px;
+}
+#articleContent th {
+  background: var(--sidebar-bg);
+  font-weight: 600;
+}
+#articleContent hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 24px 0;
+}
+
+/* ─── Progress Bar ─── */
+#progressBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  background: var(--sidebar-bg);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+#progressFill {
+  height: 4px;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width .3s;
+  flex: 1;
+}
+#progressText { white-space: nowrap; }
+
+/* ─── Search Results ─── */
+.search-results { margin-bottom: 20px; }
+.search-result-header {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.search-result-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  transition: background .1s;
+}
+.search-result-item:hover { background: var(--hover-bg); }
+.search-result-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+.search-result-path {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+.search-result-snippet {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+.search-empty {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
+
+/* ─── Error State ─── */
+.error-message {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--text-secondary);
+}
+.error-message h2 { font-size: 18px; margin-bottom: 8px; }
+.error-message p { font-size: 14px; color: var(--text-tertiary); }
+
+/* ─── Sidebar Overlay (mobile) ─── */
+#sidebarOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 98;
+  background: rgba(0,0,0,0.3);
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 1023px) {
+  #menuToggle { display: block; }
+  #sidebar {
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    z-index: 99;
+    height: calc(100vh - var(--nav-height));
+    transform: translateX(-100%);
+    transition: transform .2s;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.08);
+  }
+  #sidebar.open { transform: translateX(0); }
+  #sidebarOverlay.open { display: block; }
+  #searchBox { width: 160px; }
+  #content { padding: 24px 20px; }
+}
+
+@media (max-width: 767px) {
+  #content { padding: 16px; }
+  #searchBox { width: 120px; }
+  #searchBox input { font-size: 12px; }
+  #articleContent h1 { font-size: 22px; }
+  #articleContent h2 { font-size: 18px; }
+}
