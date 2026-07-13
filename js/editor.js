@@ -24,20 +24,7 @@
     saveBtn.style.cssText = 'padding:10px 22px;background:#007aff;color:#fff;border:none;border-radius:20px;font-size:14px;cursor:pointer;box-shadow:0 4px 16px rgba(0,122,255,0.3);font-family:inherit;font-weight:500;transition:transform.15s,box-shadow.15s';
     saveBtn.onmouseover = function() { this.style.transform = 'scale(1.05)'; };
     saveBtn.onmouseout = function() { this.style.transform = 'scale(1)'; };
-    saveBtn.onclick = async function() {
-      if (saveInProgress) return;
-      saveInProgress = true;
-      this.textContent = '⏳ 保存中...';
-      this.disabled = true;
-      try {
-        syncWysiwygToMarkdown();
-        await saveToGitHub();
-      } catch (e) {
-        showToast('保存出错: ' + e.message);
-        reenableSaveBtn();
-      }
-      saveInProgress = false;
-    };
+    saveBtn.onclick = function() { doSave(); };
 
     var closeBtn = document.createElement('button');
     closeBtn.id = 'closeEditorBtn';
@@ -163,14 +150,7 @@
     wysiwygContent.addEventListener('keydown', function(e) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
-        if (saveInProgress) return;
-        saveInProgress = true;
-        syncWysiwygToMarkdown();
-        saveToGitHub().catch(function(e) {
-          showToast('保存出错: ' + e.message);
-        }).finally(function() {
-          saveInProgress = false;
-        });
+        doSave();
       }
     });
 
@@ -300,8 +280,7 @@
         document.execCommand('insertHTML', false, '<table border="1"><tr><td>内容</td><td>内容</td></tr><tr><td>内容</td><td>内容</td></tr></table>');
         break;
       case 'save':
-        syncWysiwygToMarkdown();
-        saveToGitHub();
+        doSave();
         break;
       case 'new':
         createNewNote();
@@ -388,6 +367,17 @@
     }
   }
 
+  function doSave() {
+    if (saveInProgress) return;
+    saveInProgress = true;
+    var sb = document.getElementById('editorSaveBtn');
+    if (sb) { sb.textContent = '⏳ 保存中...'; sb.disabled = true; }
+    syncWysiwygToMarkdown();
+    saveToGitHub().finally(function() {
+      saveInProgress = false;
+    });
+  }
+
   function reenableSaveBtn() {
     var sb = document.getElementById('editorSaveBtn');
     if (sb) { sb.textContent = '💾 保存'; sb.disabled = false; }
@@ -401,7 +391,8 @@
   }
 
   function exit() {
-    document.getElementById('breadcrumb').style.display = 'none';
+    var bc = document.getElementById('breadcrumb');
+    if (bc) bc.style.display = 'none';
     var eb = document.getElementById('editBtn');
     if (eb) eb.style.display = 'block';
     var actions = document.getElementById('editorActions');

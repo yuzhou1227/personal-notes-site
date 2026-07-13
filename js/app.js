@@ -261,12 +261,14 @@
     ).join(' ');
 
     const breadcrumb = document.getElementById('breadcrumb');
-    breadcrumb.innerHTML = breadcrumbHtml;
-    breadcrumb.style.display = 'block';
+    if (breadcrumb) { breadcrumb.innerHTML = breadcrumbHtml; breadcrumb.style.display = 'block'; }
 
-    document.getElementById('welcomeMessage').style.display = 'none';
-    document.getElementById('articleContent').innerHTML = html;
-    document.getElementById('content').scrollTop = 0;
+    var wm = document.getElementById('welcomeMessage');
+    if (wm) wm.style.display = 'none';
+    var ac = document.getElementById('articleContent');
+    if (ac) ac.innerHTML = html;
+    var ct = document.getElementById('content');
+    if (ct) ct.scrollTop = 0;
 
     // Add edit button
     var editBtn = document.createElement('button');
@@ -289,8 +291,10 @@
     const results = Search.query(q);
     const container = document.getElementById('articleContent');
 
-    document.getElementById('welcomeMessage').style.display = 'none';
-    document.getElementById('breadcrumb').style.display = 'none';
+    var wm8 = document.getElementById('welcomeMessage');
+    if (wm8) wm8.style.display = 'none';
+    var bc8 = document.getElementById('breadcrumb');
+    if (bc8) bc8.style.display = 'none';
 
     if (results.length === 0) {
       container.innerHTML = `<div class="search-empty">没有找到匹配「${escapeHtml(q)}」的笔记</div>`;
@@ -330,9 +334,12 @@
         return;
       }
     }
-    document.getElementById('welcomeMessage').style.display = 'block';
-    document.getElementById('articleContent').innerHTML = '';
-    document.getElementById('breadcrumb').style.display = 'none';
+    var wm = document.getElementById('welcomeMessage');
+    if (wm) wm.style.display = 'block';
+    var ac = document.getElementById('articleContent');
+    if (ac) ac.innerHTML = '';
+    var bc = document.getElementById('breadcrumb');
+    if (bc) bc.style.display = 'none';
   }
 
   function showEmptyConfig() {
