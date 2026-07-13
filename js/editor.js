@@ -24,6 +24,8 @@
     renderEditor();
   }
 
+  var showSource = false;
+
   function renderEditor() {
     var container = document.getElementById('articleContent');
     container.innerHTML = '';
@@ -31,7 +33,7 @@
     // Toolbar
     var toolbar = document.createElement('div');
     toolbar.id = 'editorToolbar';
-    toolbar.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;padding:0 0 12px;border-bottom:1px solid #e5e5ea;margin-bottom:0';
+    toolbar.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;padding:0 0 12px;border-bottom:1px solid #e5e5ea;margin-bottom:0;align-items:center';
 
     var buttons = [
       { label: 'B', cmd: 'bold', title: '粗体' },
@@ -56,6 +58,8 @@
       { label: '|' },
       { label: '💾', cmd: 'save', title: '保存到 GitHub' },
       { label: '📁', cmd: 'new', title: '新建笔记' },
+      { label: '|' },
+      { label: '源码', cmd: 'toggleSource', title: '显示/隐藏 Markdown 源码' },
     ];
 
     for (var b of buttons) {
@@ -73,109 +77,63 @@
       btn.onmouseover = function() { this.style.background = '#f0f0f0'; };
       btn.onmouseout = function() { this.style.background = 'transparent'; };
       btn.onclick = function(cmd) { return function() { executeCmd(cmd); }; }(b.cmd);
+      if (b.cmd === 'toggleSource') { btn.style.fontSize = '11px'; btn.style.color = '#007aff'; }
       toolbar.appendChild(btn);
     }
 
-    // Split pane container
-    var splitPane = document.createElement('div');
-    splitPane.style.cssText = 'display:flex;gap:0;margin:0 -48px;min-height:calc(100vh - 280px)';
+    // Editor area (WYSIWYG primary)
+    var editorWrap = document.createElement('div');
+    editorWrap.style.cssText = 'display:flex;gap:0;margin:0 -48px;min-height:calc(100vh - 280px)';
 
-    // Editor textarea
-    var editorPane = document.createElement('div');
-    editorPane.style.cssText = 'flex:1;display:flex;flex-direction:column;border-right:1px solid #e5e5ea';
+    // WYSIWYG contenteditable pane (visible by default)
+    var wysiwygPane = document.createElement('div');
+    wysiwygPane.style.cssText = 'flex:1;display:flex;flex-direction:column;';
 
-    var editorHeader = document.createElement('div');
-    editorHeader.style.cssText = 'padding:8px 16px;font-size:12px;color:#8e8e93;background:#f8f8f8;border-bottom:1px solid #e5e5ea';
-    editorHeader.textContent = 'Markdown';
-    editorPane.appendChild(editorHeader);
+    var wysiwygHeader = document.createElement('div');
+    wysiwygHeader.style.cssText = 'padding:8px 16px;font-size:12px;color:#8e8e93;background:#f8f8f8;border-bottom:1px solid #e5e5ea';
+    wysiwygHeader.textContent = '编辑区 — 点击内容直接编辑';
+    wysiwygPane.appendChild(wysiwygHeader);
+
+    var wysiwygContent = document.createElement('div');
+    wysiwygContent.id = 'editorPreview';
+    wysiwygContent.contentEditable = true;
+    wysiwygContent.innerHTML = renderMarkdown(currentContent);
+    wysiwygContent.style.cssText = 'flex:1;padding:24px 32px;overflow-y:auto;font-size:15px;line-height:1.8;outline:none;min-height:400px';
+    wysiwygContent.addEventListener('input', function() { autoSaveDraft(); });
+    wysiwygPane.appendChild(wysiwygContent);
+
+    // Source pane (hidden by default)
+    var sourcePane = document.createElement('div');
+    sourcePane.id = 'editorSourcePane';
+    sourcePane.style.cssText = 'flex:1;display:none;flex-direction:column;border-left:1px solid #e5e5ea';
+
+    var sourceHeader = document.createElement('div');
+    sourceHeader.style.cssText = 'padding:8px 16px;font-size:12px;color:#8e8e93;background:#f8f8f8;border-bottom:1px solid #e5e5ea';
+    sourceHeader.textContent = 'Markdown 源码';
+    sourcePane.appendChild(sourceHeader);
 
     var textarea = document.createElement('textarea');
     textarea.id = 'editorTextarea';
     textarea.value = currentContent;
     textarea.style.cssText = 'flex:1;border:none;outline:none;resize:none;padding:20px 24px;font-family:"SF Mono","JetBrains Mono","Fira Code",monospace;font-size:14px;line-height:1.7;background:#fafafa;color:#1a1a1a;tab-size:2';
     textarea.spellcheck = false;
-    editorPane.appendChild(textarea);
+    sourcePane.appendChild(textarea);
 
-    // Preview pane
-    var previewPane = document.createElement('div');
-    previewPane.style.cssText = 'flex:1;display:flex;flex-direction:column;background:#fff';
+    editorWrap.appendChild(wysiwygPane);
+    editorWrap.appendChild(sourcePane);
 
-    var previewHeader = document.createElement('div');
-    previewHeader.style.cssText = 'padding:8px 16px;font-size:12px;color:#8e8e93;background:#f8f8f8;border-bottom:1px solid #e5e5ea';
-    previewHeader.textContent = '预览';
-    previewPane.appendChild(previewHeader);
-
-    var previewContent = document.createElement('div');
-    previewContent.id = 'editorPreview';
-    previewContent.style.cssText = 'flex:1;padding:20px 24px;overflow-y:auto;font-size:15px;line-height:1.7';
-    previewPane.appendChild(previewContent);
-
-    splitPane.appendChild(editorPane);
-    splitPane.appendChild(previewPane);
-
-    // Status bar
-    var statusBar = document.createElement('div');
-    statusBar.id = 'editorStatusBar';
-    statusBar.style.cssText = 'padding:8px 16px;font-size:12px;color:#8e8e93;background:#f8f8f8;border-top:1px solid #e5e5ea;display:flex;justify-content:space-between';
-    statusBar.innerHTML = '<span>字数: ' + currentContent.length + '</span><span id="editorSaveStatus">草稿自动保存</span>';
-
-    // Assemble
-    container.appendChild(toolbar);
-    container.appendChild(splitPane);
-    container.appendChild(statusBar);
-
-    // Initial preview render
-    updatePreview();
-
-    // Live preview on input
-    textarea.addEventListener('input', function() {
-      currentContent = this.value;
-      updatePreview();
-      updateStatusBar();
-      autoSaveDraft();
-    });
-
-    // Keyboard shortcuts
-    textarea.addEventListener('keydown', function(e) {
-      var isCtrl = e.ctrlKey || e.metaKey;
-
-      if (e.key === 'Tab') {
+    // Keyboard shortcut on WYSIWYG
+    wysiwygContent.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
-        var start = this.selectionStart;
-        var end = this.selectionEnd;
-        this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
-        this.selectionStart = this.selectionEnd = start + 2;
-        currentContent = this.value;
-        updatePreview();
-        updateStatusBar();
-        autoSaveDraft();
-        return;
-      }
-
-      if (!isCtrl) return;
-
-      var handled = true;
-      switch (e.key.toLowerCase()) {
-        case 'b': wrapSelection(this, '**', '**'); break;
-        case 'i': wrapSelection(this, '*', '*'); break;
-        case 'k':
-          var url = prompt('输入链接地址:', 'https://');
-          if (url) wrapSelection(this, '[', '](' + url + ')');
-          break;
-        case 's': e.preventDefault(); saveToGitHub(); break;
-        default: handled = false;
-      }
-      if (handled) {
-        e.preventDefault();
-        currentContent = this.value;
-        updatePreview();
-        updateStatusBar();
-        autoSaveDraft();
+        // Sync WYSIWYG -> Markdown before saving
+        syncWysiwygToMarkdown();
+        saveToGitHub();
       }
     });
 
-    // Image paste support
-    textarea.addEventListener('paste', function(e) {
+    // Handle paste in WYSIWYG (strip HTML for images)
+    wysiwygContent.addEventListener('paste', function(e) {
       var items = (e.clipboardData || e.originalEvent.clipboardData).items;
       for (var i = 0; i < items.length; i++) {
         if (items[i].type && items[i].type.startsWith('image/')) {
@@ -186,9 +144,8 @@
       }
     });
 
-    // Image drag & drop
-    textarea.addEventListener('dragover', function(e) { e.preventDefault(); });
-    textarea.addEventListener('drop', function(e) {
+    wysiwygContent.addEventListener('dragover', function(e) { e.preventDefault(); });
+    wysiwygContent.addEventListener('drop', function(e) {
       e.preventDefault();
       var files = e.dataTransfer.files;
       for (var i = 0; i < files.length; i++) {
@@ -199,135 +156,126 @@
       }
     });
 
-    // Scroll sync: textarea -> preview
-    textarea.addEventListener('scroll', function() {
-      var ratio = this.scrollTop / (this.scrollHeight - this.clientHeight);
-      var pv = document.getElementById('editorPreview');
-      pv.scrollTop = ratio * (pv.scrollHeight - pv.clientHeight);
-    });
+    // Status bar
+    var statusBar = document.createElement('div');
+    statusBar.id = 'editorStatusBar';
+    statusBar.style.cssText = 'padding:8px 16px;font-size:12px;color:#8e8e93;background:#f8f8f8;border-top:1px solid #e5e5ea;display:flex;justify-content:space-between';
+    statusBar.innerHTML = '<span>直接在内容上点击编辑</span><span id="editorSaveStatus">草稿自动保存</span>';
+
+    // Assemble
+    container.appendChild(toolbar);
+    container.appendChild(editorWrap);
+    container.appendChild(statusBar);
   }
 
-  function updatePreview() {
+  function syncWysiwygToMarkdown() {
     var preview = document.getElementById('editorPreview');
     if (!preview) return;
-    preview.innerHTML = renderMarkdown(currentContent);
+    var html = preview.innerHTML;
+    if (window.htmlToMarkdown) {
+      currentContent = htmlToMarkdown(html);
+    } else {
+      // Fallback: extract text content
+      var tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      currentContent = tmp.textContent || tmp.innerText || '';
+    }
+    var ta = document.getElementById('editorTextarea');
+    if (ta) ta.value = currentContent;
   }
 
   function updateStatusBar() {
     var sb = document.getElementById('editorStatusBar');
     if (!sb) return;
-    var lines = currentContent.split('\n').length;
-    sb.innerHTML = '<span>字数: ' + currentContent.length + ' · 行数: ' + lines + '</span><span id="editorSaveStatus">草稿自动保存</span>';
+    var preview = document.getElementById('editorPreview');
+    var text = preview ? (preview.textContent || '').length : 0;
+    sb.innerHTML = '<span>直接在内容上点击编辑</span><span id="editorSaveStatus">草稿自动保存</span>';
   }
 
   function autoSaveDraft() {
     try {
-      localStorage.setItem('draft_' + currentPath, currentContent);
+      var preview = document.getElementById('editorPreview');
+      if (!preview) return;
+      localStorage.setItem('draft_' + currentPath, preview.innerHTML);
       var status = document.getElementById('editorSaveStatus');
       if (status) { status.textContent = '草稿已保存'; status.style.color = '#34c759'; }
     } catch (e) { /* ignore */ }
   }
 
   function executeCmd(cmd) {
-    var ta = document.getElementById('editorTextarea');
-    if (!ta) return;
-    var start = ta.selectionStart;
-    var end = ta.selectionEnd;
-    var sel = ta.value.substring(start, end);
-    var lineStart = ta.value.lastIndexOf('\n', start - 1) + 1;
-    var lineEnd = ta.value.indexOf('\n', end);
-    if (lineEnd === -1) lineEnd = ta.value.length;
-    var line = ta.value.substring(lineStart, lineEnd);
+    var preview = document.getElementById('editorPreview');
+    if (!preview) return;
 
     switch (cmd) {
       case 'bold':
-        wrapSelection(ta, '**', '**', start, end);
+        document.execCommand('bold');
         break;
       case 'italic':
-        wrapSelection(ta, '*', '*', start, end);
+        document.execCommand('italic');
         break;
       case 'strike':
-        wrapSelection(ta, '~~', '~~', start, end);
+        document.execCommand('strikeThrough');
         break;
       case 'h1':
-        replaceLine(ta, '# ', lineStart, lineEnd, line);
+        document.execCommand('formatBlock', false, 'h1');
         break;
       case 'h2':
-        replaceLine(ta, '## ', lineStart, lineEnd, line);
+        document.execCommand('formatBlock', false, 'h2');
         break;
       case 'h3':
-        replaceLine(ta, '### ', lineStart, lineEnd, line);
+        document.execCommand('formatBlock', false, 'h3');
         break;
       case 'ul':
-        replaceLine(ta, '- ', lineStart, lineEnd, line);
+        document.execCommand('insertUnorderedList');
         break;
       case 'ol':
-        replaceLine(ta, '1. ', lineStart, lineEnd, line);
+        document.execCommand('insertOrderedList');
         break;
       case 'task':
-        replaceLine(ta, '- [ ] ', lineStart, lineEnd, line);
+        document.execCommand('insertHTML', false, '<div><input type="checkbox"> 任务</div>');
         break;
       case 'code':
-        wrapBlock(ta, '```\n', '\n```', start, end);
+        document.execCommand('formatBlock', false, 'pre');
         break;
       case 'quote':
-        replaceLine(ta, '> ', lineStart, lineEnd, line);
+        document.execCommand('formatBlock', false, 'blockquote');
         break;
       case 'hr':
-        insertAtCursor(ta, '\n---\n', start);
+        document.execCommand('insertHorizontalRule');
         break;
       case 'link':
         var url = prompt('输入链接地址:', 'https://');
-        if (url) wrapSelection(ta, '[', '](' + url + ')', start, end);
+        if (url) document.execCommand('createLink', false, url);
         break;
       case 'image':
         var imgUrl = prompt('输入图片地址:', '');
-        if (imgUrl) insertAtCursor(ta, '![](' + imgUrl + ')', start);
+        if (imgUrl) document.execCommand('insertImage', false, imgUrl);
         break;
       case 'table':
-        insertAtCursor(ta, '\n| 表头 | 表头 |\n| --- | --- |\n| 内容 | 内容 |\n', start);
+        document.execCommand('insertHTML', false, '<table border="1"><tr><td>内容</td><td>内容</td></tr><tr><td>内容</td><td>内容</td></tr></table>');
         break;
       case 'save':
+        syncWysiwygToMarkdown();
         saveToGitHub();
         break;
       case 'new':
         createNewNote();
         break;
+      case 'toggleSource':
+        showSource = !showSource;
+        var sp = document.getElementById('editorSourcePane');
+        if (sp) {
+          sp.style.display = showSource ? 'flex' : 'none';
+          if (showSource) {
+            syncWysiwygToMarkdown();
+            var ta = document.getElementById('editorTextarea');
+            if (ta) ta.value = currentContent;
+          }
+        }
+        break;
     }
-    currentContent = ta.value;
-    updatePreview();
-    updateStatusBar();
     autoSaveDraft();
-  }
-
-  function wrapSelection(ta, before, after, start, end) {
-    if (start === undefined) { start = ta.selectionStart; end = ta.selectionEnd; }
-    var sel = ta.value.substring(start, end) || 'text';
-    var val = ta.value;
-    ta.value = val.substring(0, start) + before + sel + after + val.substring(end);
-    ta.selectionStart = start + before.length;
-    ta.selectionEnd = end + before.length + sel.length;
-    ta.focus();
-  }
-
-  function replaceLine(ta, prefix, lineStart, lineEnd, line) {
-    var newLine = prefix + line.replace(/^[#*->\s]+/, '');
-    ta.value = ta.value.substring(0, lineStart) + newLine + ta.value.substring(lineEnd);
-    ta.focus();
-  }
-
-  function wrapBlock(ta, before, after, start, end) {
-    var val = ta.value;
-    var selText = val.substring(start, end) || '代码';
-    ta.value = val.substring(0, start) + before + selText + after + val.substring(end);
-    ta.focus();
-  }
-
-  function insertAtCursor(ta, text, pos) {
-    var val = ta.value;
-    ta.value = val.substring(0, pos) + text + val.substring(pos);
-    ta.selectionStart = ta.selectionEnd = pos + text.length;
-    ta.focus();
+    preview.focus();
   }
 
   async function saveToGitHub() {
