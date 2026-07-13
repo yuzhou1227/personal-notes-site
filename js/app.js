@@ -16,14 +16,17 @@
     loadNotes();
   }
 
+  var searchTimer = null;
+
   function setupEventListeners() {
     document.getElementById('searchInput').addEventListener('input', function(e) {
       const q = e.target.value.trim();
-      if (q.length < 1) {
+      if (q.length < 2) {
         showBrowsingView();
         return;
       }
-      performSearch(q);
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function() { performSearch(q); }, 300);
     });
 
     document.getElementById('menuToggle').addEventListener('click', function() {

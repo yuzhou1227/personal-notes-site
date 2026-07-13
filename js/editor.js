@@ -163,9 +163,14 @@
     wysiwygContent.addEventListener('keydown', function(e) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
-        // Sync WYSIWYG -> Markdown before saving
+        if (saveInProgress) return;
+        saveInProgress = true;
         syncWysiwygToMarkdown();
-        saveToGitHub();
+        saveToGitHub().catch(function(e) {
+          showToast('保存出错: ' + e.message);
+        }).finally(function() {
+          saveInProgress = false;
+        });
       }
     });
 
