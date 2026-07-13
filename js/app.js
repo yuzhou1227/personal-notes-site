@@ -118,7 +118,7 @@
         const contentResp = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/contents/${entry.path}`);
         if (contentResp.ok) {
           const contentData = await contentResp.json();
-          const mdContent = atob(contentData.content);
+          const mdContent = decodeURIComponent(escape(atob(contentData.content)));
           const title = extractTitle(mdContent);
           const relPath = entry.path.replace(/^notes\//, '');
           Cache.setFile(relPath, {
