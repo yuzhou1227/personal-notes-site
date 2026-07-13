@@ -389,6 +389,8 @@
   window.showBrowsingView = showBrowsingView;
   window.showTokenDialog = showTokenDialog;
   window.getToken = getToken;
+  window.fetchAndSyncNotes = fetchAndSyncNotes;
+  window.onNoteSelect = onNoteSelect;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initApp);

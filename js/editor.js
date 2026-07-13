@@ -55,6 +55,7 @@
       { label: '📊', cmd: 'table', title: '表格' },
       { label: '|' },
       { label: '💾', cmd: 'save', title: '保存到 GitHub' },
+      { label: '📁', cmd: 'new', title: '新建笔记' },
     ];
 
     for (var b of buttons) {
@@ -134,8 +135,10 @@
       autoSaveDraft();
     });
 
-    // Tab support
+    // Keyboard shortcuts
     textarea.addEventListener('keydown', function(e) {
+      var isCtrl = e.ctrlKey || e.metaKey;
+
       if (e.key === 'Tab') {
         e.preventDefault();
         var start = this.selectionStart;
@@ -146,6 +149,53 @@
         updatePreview();
         updateStatusBar();
         autoSaveDraft();
+        return;
+      }
+
+      if (!isCtrl) return;
+
+      var handled = true;
+      switch (e.key.toLowerCase()) {
+        case 'b': wrapSelection(this, '**', '**'); break;
+        case 'i': wrapSelection(this, '*', '*'); break;
+        case 'k':
+          var url = prompt('输入链接地址:', 'https://');
+          if (url) wrapSelection(this, '[', '](' + url + ')');
+          break;
+        case 's': e.preventDefault(); saveToGitHub(); break;
+        default: handled = false;
+      }
+      if (handled) {
+        e.preventDefault();
+        currentContent = this.value;
+        updatePreview();
+        updateStatusBar();
+        autoSaveDraft();
+      }
+    });
+
+    // Image paste support
+    textarea.addEventListener('paste', function(e) {
+      var items = (e.clipboardData || e.originalEvent.clipboardData).items;
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].type && items[i].type.startsWith('image/')) {
+          e.preventDefault();
+          uploadImage(items[i].getAsFile());
+          return;
+        }
+      }
+    });
+
+    // Image drag & drop
+    textarea.addEventListener('dragover', function(e) { e.preventDefault(); });
+    textarea.addEventListener('drop', function(e) {
+      e.preventDefault();
+      var files = e.dataTransfer.files;
+      for (var i = 0; i < files.length; i++) {
+        if (files[i].type && files[i].type.startsWith('image/')) {
+          uploadImage(files[i]);
+          return;
+        }
       }
     });
 
@@ -240,6 +290,9 @@
       case 'save':
         saveToGitHub();
         break;
+      case 'new':
+        createNewNote();
+        break;
     }
     currentContent = ta.value;
     updatePreview();
@@ -248,10 +301,12 @@
   }
 
   function wrapSelection(ta, before, after, start, end) {
+    if (start === undefined) { start = ta.selectionStart; end = ta.selectionEnd; }
+    var sel = ta.value.substring(start, end) || 'text';
     var val = ta.value;
-    ta.value = val.substring(0, start) + before + val.substring(start, end) + after + val.substring(end);
+    ta.value = val.substring(0, start) + before + sel + after + val.substring(end);
     ta.selectionStart = start + before.length;
-    ta.selectionEnd = end + before.length;
+    ta.selectionEnd = end + before.length + sel.length;
     ta.focus();
   }
 
@@ -348,5 +403,123 @@
     currentContent = '';
   }
 
-  window.Editor = { enter: enter, exit: exit };
+  // ─── Image Upload ───
+
+  async function uploadImage(file) {
+    var token = getToken();
+    if (!token) { showTokenDialog(); return; }
+
+    var reader = new FileReader();
+    reader.onload = async function(e) {
+      var base64 = e.target.result.split(',')[1];
+      var imageName = 'img-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6) + '.' + file.name.split('.').pop();
+      var imagePath = 'assets/images/' + imageName;
+
+      showToast('正在上传图片...');
+
+      try {
+        var headers = { Authorization: 'token ' + token, Accept: 'application/vnd.github.v3+json' };
+        var url = 'https://api.github.com/repos/' + window.__NOTE_OWNER + '/' + window.__NOTE_REPO + '/contents/' + imagePath;
+        var body = {
+          message: 'add image: ' + imageName,
+          content: base64,
+          branch: window.__NOTE_BRANCH || 'master'
+        };
+
+        var resp = await fetch(url, { method: 'PUT', headers: headers, body: JSON.stringify(body) });
+        if (resp.ok) {
+          var imgMd = '![' + imageName + '](../' + imagePath + ')';
+          var ta = document.getElementById('editorTextarea');
+          var pos = ta.selectionStart;
+          insertAtCursor(ta, imgMd + '\n', pos);
+          currentContent = ta.value;
+          updatePreview();
+          updateStatusBar();
+          autoSaveDraft();
+          showToast('图片已上传');
+        } else {
+          showToast('图片上传失败');
+        }
+      } catch (err) {
+        showToast('上传出错: ' + err.message);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ─── File Management ───
+
+  async function createNewNote() {
+    var name = prompt('输入笔记文件名（不含 .md）：', '新笔记');
+    if (!name) return;
+    if (!name.endsWith('.md')) name += '.md';
+
+    var folder = '';
+    var pathParts = currentPath ? currentPath.split('/') : [];
+    if (pathParts.length > 1) {
+      // Create in same folder as current note
+      folder = pathParts.slice(0, -1).join('/') + '/';
+    }
+    var fullPath = folder + name;
+
+    var token = getToken();
+    if (!token) { showTokenDialog(); return; }
+
+    try {
+      var headers = { Authorization: 'token ' + token, Accept: 'application/vnd.github.v3+json' };
+      var url = 'https://api.github.com/repos/' + window.__NOTE_OWNER + '/' + window.__NOTE_REPO + '/contents/notes/' + fullPath;
+
+      var body = {
+        message: 'create: ' + fullPath,
+        content: btoa(unescape(encodeURIComponent('# ' + name.replace(/\.md$/, '') + '\n\n')),
+        branch: window.__NOTE_BRANCH || 'master'
+      };
+
+      var resp = await fetch(url, { method: 'PUT', headers: headers, body: JSON.stringify(body) });
+      if (resp.ok) {
+        showToast('已创建: ' + name);
+        // Reload notes
+        await fetchAndSyncNotes();
+        // Open the new note
+        setTimeout(function() { onNoteSelect(fullPath); }, 500);
+      } else {
+        showToast('创建失败');
+      }
+    } catch (e) {
+      showToast('创建出错: ' + e.message);
+    }
+  }
+
+  window.createNewNote = createNewNote;
+
+  function addSidebarActions() {
+    // Add "new note" button above the file tree
+    var sidebar = document.getElementById('sidebar');
+    var header = document.createElement('div');
+    header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:4px 12px 8px;font-size:12px;color:#8e8e93';
+    header.innerHTML = '<span>笔记列表</span>' +
+      '<span style="cursor:pointer;font-size:16px;display:flex;gap:4px">' +
+        '<span id="sidebarNewNote" title="新建笔记" style="cursor:pointer;padding:2px 6px;border-radius:4px;transition:background.1s">➕</span>' +
+      '</span>';
+
+    // Insert at top of sidebar
+    var fileTree = document.getElementById('fileTree');
+    sidebar.insertBefore(header, fileTree);
+
+    document.getElementById('sidebarNewNote').onmouseover = function() { this.style.background = '#f0f0f0'; };
+    document.getElementById('sidebarNewNote').onmouseout = function() { this.style.background = 'transparent'; };
+    document.getElementById('sidebarNewNote').onclick = function() {
+      if (!getToken()) { showTokenDialog(); return; }
+      createNewNote();
+    };
+  }
+
+  // Run once on load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', addSidebarActions);
+  } else {
+    addSidebarActions();
+  }
+
+  window.Editor = { enter: enter, exit: exit, createNewNote: createNewNote };
 })();
