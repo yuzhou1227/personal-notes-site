@@ -457,7 +457,6 @@
     var folder = '';
     var pathParts = currentPath ? currentPath.split('/') : [];
     if (pathParts.length > 1) {
-      // Create in same folder as current note
       folder = pathParts.slice(0, -1).join('/') + '/';
     }
     var fullPath = folder + name;
@@ -469,19 +468,29 @@
       var headers = { Authorization: 'token ' + token, Accept: 'application/vnd.github.v3+json' };
       var url = 'https://api.github.com/repos/' + window.__NOTE_OWNER + '/' + window.__NOTE_REPO + '/contents/notes/' + fullPath;
 
+      var contentText = '# ' + name.replace(/\.md$/, '') + '\n\n';
       var body = {
         message: 'create: ' + fullPath,
-        content: btoa(unescape(encodeURIComponent('# ' + name.replace(/\.md$/, '') + '\n\n'))),
+        content: btoa(unescape(encodeURIComponent(contentText))),
         branch: window.__NOTE_BRANCH || 'master'
       };
 
       var resp = await fetch(url, { method: 'PUT', headers: headers, body: JSON.stringify(body) });
       if (resp.ok) {
+        var result = await resp.json();
+        var newSha = result.content.sha;
+
+        // Add to cache immediately
+        Cache.setFile(fullPath, { sha: newSha, title: name.replace(/\.md$/, ''), content: contentText });
+        Search.buildIndex();
+
         showToast('已创建: ' + name);
-        // Reload notes
+
+        // Refresh tree (skip content download by fetching tree only)
         await fetchAndSyncNotes();
+
         // Open the new note
-        setTimeout(function() { onNoteSelect(fullPath); }, 500);
+        setTimeout(function() { onNoteSelect(fullPath); }, 300);
       } else {
         showToast('创建失败');
       }
