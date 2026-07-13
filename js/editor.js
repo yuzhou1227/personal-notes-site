@@ -485,7 +485,166 @@
     }
   }
 
+  // ─── Rename Note ───
+
+  async function renameNote(oldPath) {
+    var oldName = oldPath.split('/').pop().replace(/\.md$/, '');
+    var newName = prompt('重命名为（不含 .md）：', oldName);
+    if (!newName || newName === oldName) return;
+    if (!newName.endsWith('.md')) newName += '.md';
+
+    var parts = oldPath.split('/');
+    parts.pop();
+    var folder = parts.length > 0 ? parts.join('/') + '/' : '';
+    var newPath = folder + newName;
+
+    var token = getToken();
+    if (!token) { showTokenDialog(); return; }
+
+    try {
+      var headers = { Authorization: 'token ' + token, Accept: 'application/vnd.github.v3+json' };
+      var baseUrl = 'https://api.github.com/repos/' + window.__NOTE_OWNER + '/' + window.__NOTE_REPO;
+
+      // 1. Get old file content + SHA
+      var getResp = await fetch(baseUrl + '/contents/notes/' + oldPath, { headers: headers });
+      if (!getResp.ok) { showToast('获取文件信息失败'); return; }
+      var oldData = await getResp.json();
+
+      // 2. Create new file with same content
+      var putBody = {
+        message: 'rename: ' + oldPath + ' → ' + newPath,
+        content: oldData.content,
+        branch: window.__NOTE_BRANCH || 'master'
+      };
+      var putResp = await fetch(baseUrl + '/contents/notes/' + newPath, { method: 'PUT', headers: headers, body: JSON.stringify(putBody) });
+      if (!putResp.ok) { showToast('创建新文件失败'); return; }
+
+      // 3. Delete old file
+      var delBody = {
+        message: 'delete: ' + oldPath,
+        sha: oldData.sha,
+        branch: window.__NOTE_BRANCH || 'master'
+      };
+      await fetch(baseUrl + '/contents/notes/' + oldPath, { method: 'DELETE', headers: headers, body: JSON.stringify(delBody) });
+
+      // 4. Update cache
+      var cached = Cache.getFile(oldPath);
+      if (cached) {
+        Cache.setFile(newPath, cached);
+        var cache = Cache.get();
+        if (cache && cache.files) delete cache.files[oldPath];
+        Cache.set(cache);
+      }
+
+      showToast('已重命名: ' + newName);
+      await fetchAndSyncNotes();
+      setTimeout(function() { onNoteSelect(newPath); }, 300);
+    } catch (e) {
+      showToast('重命名失败: ' + e.message);
+    }
+  }
+
+  // ─── Delete Note ───
+
+  async function deleteNote(path) {
+    if (!confirm('确定删除 "' + path + '" 吗？此操作不可撤销。')) return;
+
+    var token = getToken();
+    if (!token) { showTokenDialog(); return; }
+
+    try {
+      var headers = { Authorization: 'token ' + token, Accept: 'application/vnd.github.v3+json' };
+      var baseUrl = 'https://api.github.com/repos/' + window.__NOTE_OWNER + '/' + window.__NOTE_REPO;
+
+      var getResp = await fetch(baseUrl + '/contents/notes/' + path, { headers: headers });
+      if (!getResp.ok) { showToast('获取文件信息失败'); return; }
+      var data = await getResp.json();
+
+      var delBody = {
+        message: 'delete: ' + path,
+        sha: data.sha,
+        branch: window.__NOTE_BRANCH || 'master'
+      };
+      var delResp = await fetch(baseUrl + '/contents/notes/' + path, { method: 'DELETE', headers: headers, body: JSON.stringify(delBody) });
+
+      if (delResp.ok) {
+        // Remove from cache
+        var cache = Cache.get();
+        if (cache && cache.files) delete cache.files[path];
+        Cache.set(cache);
+        Search.buildIndex();
+
+        showToast('已删除');
+        await fetchAndSyncNotes();
+        showBrowsingView();
+      } else {
+        showToast('删除失败');
+      }
+    } catch (e) {
+      showToast('删除失败: ' + e.message);
+    }
+  }
+
+  // ─── Add Context Menu to Tree ───
+
+  function addContextMenu() {
+    var tree = document.getElementById('fileTree');
+    if (!tree) return;
+
+    tree.addEventListener('contextmenu', function(e) {
+      var row = e.target.closest('.tree-row');
+      if (!row) return;
+      var treeNode = row.closest('.tree-node');
+      if (!treeNode || treeNode.dataset.type !== 'file') return;
+
+      e.preventDefault();
+      var path = row.dataset.path;
+      if (!path) return;
+
+      var token = getToken();
+      if (!token) { showTokenDialog(); return; }
+
+      // Remove existing context menu
+      var old = document.getElementById('treeContextMenu');
+      if (old) old.remove();
+
+      var menu = document.createElement('div');
+      menu.id = 'treeContextMenu';
+      menu.style.cssText = 'position:fixed;z-index:200;background:#fff;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.12);padding:4px;min-width:140px;font-size:14px';
+      menu.style.left = e.clientX + 'px';
+      menu.style.top = e.clientY + 'px';
+
+      var items = [
+        { label: '✏️ 重命名', action: function() { renameNote(path); } },
+        { label: '🗑️ 删除', action: function() { deleteNote(path); }, color: '#ff3b30' },
+      ];
+
+      for (var item of items) {
+        var div = document.createElement('div');
+        div.textContent = item.label;
+        div.style.cssText = 'padding:8px 14px;cursor:pointer;border-radius:6px;transition:background.1s' + (item.color ? ';color:' + item.color : '');
+        div.onmouseover = function() { this.style.background = '#f0f0f0'; };
+        div.onmouseout = function() { this.style.background = 'transparent'; };
+        div.onclick = function(action) { return function() { action(); menu.remove(); }; }(item.action);
+        menu.appendChild(div);
+      }
+
+      document.body.appendChild(menu);
+
+      // Click outside to close
+      setTimeout(function() {
+        document.addEventListener('click', function closeMenu() {
+          var m = document.getElementById('treeContextMenu');
+          if (m) m.remove();
+          document.removeEventListener('click', closeMenu);
+        });
+      }, 10);
+    });
+  }
+
   window.createNewNote = createNewNote;
+  window.renameNote = renameNote;
+  window.deleteNote = deleteNote;
 
   function addSidebarActions() {
     // Add "new note" button above the file tree
@@ -510,10 +669,14 @@
   }
 
   // Run once on load
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', addSidebarActions);
-  } else {
+  function init() {
     addSidebarActions();
+    addContextMenu();
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
   }
 
   window.Editor = { enter: enter, exit: exit, createNewNote: createNewNote };
