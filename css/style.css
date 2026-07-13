@@ -468,3 +468,11 @@ body {
   #logo { font-size: 15px; }
   #toast { font-size: 13px; padding: 10px 18px; }
 }
+
+/* ─── Editor ─── */
+#editorTextarea::selection { background: #007aff; color: #fff; }
+#editorPreview h1, #editorPreview h2, #editorPreview h3 { margin-top: 0; }
+#editorPreview h1:first-child { margin-top: 0; }
+#editorPreview p:first-child { margin-top: 0; }
+#editorToolbar button:active { background: #007aff !important; color: #fff !important; }
+#editorToolbar button[title="保存到 GitHub"] { margin-left: auto; font-size: 11px; }

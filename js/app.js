@@ -253,6 +253,22 @@
     document.getElementById('welcomeMessage').style.display = 'none';
     document.getElementById('articleContent').innerHTML = html;
     document.getElementById('content').scrollTop = 0;
+
+    // Add edit button
+    var editBtn = document.createElement('button');
+    editBtn.id = 'editBtn';
+    editBtn.textContent = '✏️ 编辑';
+    editBtn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:50;padding:10px 20px;background:#007aff;color:#fff;border:none;border-radius:20px;font-size:14px;cursor:pointer;box-shadow:0 4px 16px rgba(0,122,255,0.3);font-family:inherit;transition:transform .15s,box-shadow .15s';
+    editBtn.onmouseover = function() { this.style.transform = 'scale(1.05)'; this.style.boxShadow = '0 6px 24px rgba(0,122,255,0.4)'; };
+    editBtn.onmouseout = function() { this.style.transform = 'scale(1)'; this.style.boxShadow = '0 4px 16px rgba(0,122,255,0.3)'; };
+    editBtn.onclick = function() {
+      if (!getToken()) { showTokenDialog(); return; }
+      Editor.enter(path);
+    };
+    // Remove old edit button
+    var old = document.getElementById('editBtn');
+    if (old) old.remove();
+    document.body.appendChild(editBtn);
   }
 
   function performSearch(q) {
@@ -289,6 +305,10 @@
   }
 
   function showBrowsingView() {
+    var old = document.getElementById('editBtn');
+    if (old) old.remove();
+    var oldClose = document.getElementById('closeEditorBtn');
+    if (oldClose) oldClose.remove();
     if (currentPath) {
       const cached = Cache.getFile(currentPath);
       if (cached) {
@@ -330,6 +350,32 @@
     el._hide = setTimeout(function() { el.classList.remove('show'); }, 3000);
   }
 
+  function showTokenDialog() {
+    if (getToken()) return;
+    var overlay = document.createElement('div');
+    overlay.id = 'tokenOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
+    overlay.innerHTML = '<div style="background:#fff;border-radius:16px;padding:32px;max-width:400px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,0.12)">' +
+      '<h2 style="font-size:18px;font-weight:600;margin-bottom:8px">需要写入权限</h2>' +
+      '<p style="font-size:14px;color:#8e8e93;margin-bottom:20px">编辑笔记需要 GitHub Personal Access Token。<br>在 GitHub Settings → Developer settings → Personal access tokens 生成，勾选 <code>public_repo</code>。</p>' +
+      '<input id="tokenInput" type="password" placeholder="粘贴你的 token" style="width:100%;padding:10px 14px;border:1px solid #e5e5ea;border-radius:10px;font-size:14px;outline:none;margin-bottom:16px;box-sizing:border-box">' +
+      '<div style="display:flex;gap:8px">' +
+      '<button id="tokenCancel" style="flex:1;padding:10px;border:1px solid #e5e5ea;border-radius:10px;background:#fff;font-size:14px;cursor:pointer">取消</button>' +
+      '<button id="tokenConfirm" style="flex:1;padding:10px;border:none;border-radius:10px;background:#007aff;color:#fff;font-size:14px;cursor:pointer">确认</button>' +
+      '</div></div>';
+    document.body.appendChild(overlay);
+
+    document.getElementById('tokenConfirm').addEventListener('click', function() {
+      var val = document.getElementById('tokenInput').value.trim();
+      if (val) { localStorage.setItem('notes_token', val); overlay.remove(); }
+    });
+    document.getElementById('tokenCancel').addEventListener('click', function() { overlay.remove(); });
+  }
+
+  function getToken() {
+    return localStorage.getItem('notes_token') || '';
+  }
+
   function escapeHtml(str) {
     if (typeof str !== 'string') return '';
     const d = document.createElement('div');
@@ -338,6 +384,11 @@
   }
 
   window.initApp = initApp;
+  window.extractTitle = extractTitle;
+  window.loadAndShowNote = loadAndShowNote;
+  window.showBrowsingView = showBrowsingView;
+  window.showTokenDialog = showTokenDialog;
+  window.getToken = getToken;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initApp);
