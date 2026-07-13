@@ -322,7 +322,12 @@
   }
 
   function showToast(message) {
-    console.log(message);
+    var el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = message;
+    el.classList.add('show');
+    clearTimeout(el._hide);
+    el._hide = setTimeout(function() { el.classList.remove('show'); }, 3000);
   }
 
   function escapeHtml(str) {
