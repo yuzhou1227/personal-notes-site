@@ -64,12 +64,23 @@
     }
   }
 
+  function apiHeaders() {
+    var t = getToken();
+    var h = { Accept: 'application/vnd.github.v3+json' };
+    if (t) h.Authorization = 'token ' + t;
+    return h;
+  }
+
   async function fetchAndSyncNotes() {
     const url = `${GITHUB_API}/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`;
-    const resp = await fetch(url);
+    const resp = await fetch(url, { headers: apiHeaders() });
     if (!resp.ok) {
       if (resp.status === 403 || resp.status === 429) {
-        showToast('GitHub API 已达到限制，使用缓存内容浏览');
+        if (getToken()) {
+          showToast('API 限制，稍后重试');
+        } else {
+          showToast('API 已达到限制，请在编辑器中配置 Token 以提升额度');
+        }
         return;
       }
       throw new Error(`API error: ${resp.status}`);
@@ -115,7 +126,7 @@
 
     for (const entry of changedPaths) {
       try {
-        const contentResp = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/contents/${entry.path}`);
+        const contentResp = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/contents/${entry.path}`, { headers: apiHeaders() });
         if (contentResp.ok) {
           const contentData = await contentResp.json();
           const mdContent = decodeURIComponent(escape(atob(contentData.content)));
@@ -225,7 +236,7 @@
     }
 
     try {
-      const resp = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/contents/notes/${path}`);
+      const resp = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/contents/notes/${path}`, { headers: apiHeaders() });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       const mdContent = atob(data.content);
