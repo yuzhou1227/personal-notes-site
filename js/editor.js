@@ -471,7 +471,7 @@
 
       var body = {
         message: 'create: ' + fullPath,
-        content: btoa(unescape(encodeURIComponent('# ' + name.replace(/\.md$/, '') + '\n\n')),
+        content: btoa(unescape(encodeURIComponent('# ' + name.replace(/\.md$/, '') + '\n\n'))),
         branch: window.__NOTE_BRANCH || 'master'
       };
 

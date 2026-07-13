@@ -239,7 +239,7 @@
       const resp = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/contents/notes/${path}`, { headers: apiHeaders() });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
-      const mdContent = atob(data.content);
+      const mdContent = decodeURIComponent(escape(atob(data.content)));
       const title = extractTitle(mdContent);
       Cache.setFile(path, { sha: data.sha, title, content: mdContent });
       Search.buildIndex();
