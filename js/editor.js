@@ -13,15 +13,43 @@
     var eb = document.getElementById('editBtn');
     if (eb) eb.style.display = 'none';
 
-    // Add close button
+    // Add floating action buttons
+    var actions = document.createElement('div');
+    actions.id = 'editorActions';
+    actions.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:60;display:flex;gap:8px';
+
+    var saveBtn = document.createElement('button');
+    saveBtn.id = 'editorSaveBtn';
+    saveBtn.textContent = '💾 保存';
+    saveBtn.style.cssText = 'padding:10px 22px;background:#007aff;color:#fff;border:none;border-radius:20px;font-size:14px;cursor:pointer;box-shadow:0 4px 16px rgba(0,122,255,0.3);font-family:inherit;font-weight:500;transition:transform.15s,box-shadow.15s';
+    saveBtn.onmouseover = function() { this.style.transform = 'scale(1.05)'; };
+    saveBtn.onmouseout = function() { this.style.transform = 'scale(1)'; };
+    saveBtn.onclick = function() {
+      this.textContent = '⏳ 保存中...';
+      this.disabled = true;
+      syncWysiwygToMarkdown();
+      saveToGitHub();
+    };
+
     var closeBtn = document.createElement('button');
     closeBtn.id = 'closeEditorBtn';
-    closeBtn.textContent = '✕ 关闭编辑器';
-    closeBtn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:60;padding:10px 20px;background:#ff3b30;color:#fff;border:none;border-radius:20px;font-size:14px;cursor:pointer;box-shadow:0 4px 16px rgba(255,59,48,0.3);font-family:inherit';
+    closeBtn.textContent = '✕ 关闭';
+    closeBtn.style.cssText = 'padding:10px 18px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:20px;font-size:13px;cursor:pointer;font-family:inherit;backdrop-filter:blur(10px);transition:background.15s';
+    closeBtn.onmouseover = function() { this.style.background = 'rgba(0,0,0,0.8)'; };
+    closeBtn.onmouseout = function() { this.style.background = 'rgba(0,0,0,0.6)'; };
     closeBtn.onclick = function() { exit(); };
-    document.body.appendChild(closeBtn);
+
+    actions.appendChild(saveBtn);
+    actions.appendChild(closeBtn);
+    document.body.appendChild(actions);
 
     renderEditor();
+
+    // Auto-focus the editor
+    setTimeout(function() {
+      var preview = document.getElementById('editorPreview');
+      if (preview) { preview.focus(); }
+    }, 100);
   }
 
   var showSource = false;
@@ -132,6 +160,9 @@
       }
     });
 
+    // Ensure new lines use <p> not <div>
+    document.execCommand('defaultParagraphSeparator', false, 'p');
+
     // Handle paste in WYSIWYG (strip HTML for images)
     wysiwygContent.addEventListener('paste', function(e) {
       var items = (e.clipboardData || e.originalEvent.clipboardData).items;
@@ -235,10 +266,10 @@
         document.execCommand('insertHTML', false, '<div><input type="checkbox"> 任务</div>');
         break;
       case 'code':
-        document.execCommand('formatBlock', false, 'pre');
+        document.execCommand('insertHTML', false, '<pre><code>代码</code></pre>');
         break;
       case 'quote':
-        document.execCommand('formatBlock', false, 'blockquote');
+        document.execCommand('insertHTML', false, '<blockquote><p>引用内容</p></blockquote>');
         break;
       case 'hr':
         document.execCommand('insertHorizontalRule');
@@ -315,20 +346,28 @@
 
       if (putResp.ok) {
         if (status) { status.textContent = '✓ 已保存到 GitHub'; status.style.color = '#34c759'; }
-        // Update cache
         var newSha = (await putResp.json()).content.sha;
         Cache.setFile(path, { sha: newSha, title: extractTitle(currentContent), content: currentContent });
         Search.buildIndex();
-        setTimeout(function() { showEditorSaved(path); }, 1000);
+        showToast('✓ 保存成功');
+        reenableSaveBtn();
+        setTimeout(function() { showEditorSaved(path); }, 1200);
       } else {
         var err = await putResp.text();
         if (status) { status.textContent = '✗ 保存失败'; status.style.color = '#ff3b30'; }
         showToast('保存失败: ' + (err.substring(0, 100) || '未知错误'));
+        reenableSaveBtn();
       }
     } catch (e) {
       if (status) { status.textContent = '✗ 保存失败'; status.style.color = '#ff3b30'; }
       showToast('保存出错: ' + e.message);
+      reenableSaveBtn();
     }
+  }
+
+  function reenableSaveBtn() {
+    var sb = document.getElementById('editorSaveBtn');
+    if (sb) { sb.textContent = '💾 保存'; sb.disabled = false; }
   }
 
   function showEditorSaved(savedPath) {
@@ -342,10 +381,9 @@
     document.getElementById('breadcrumb').style.display = 'none';
     var eb = document.getElementById('editBtn');
     if (eb) eb.style.display = 'block';
-    var cb = document.getElementById('closeEditorBtn');
-    if (cb) cb.remove();
+    var actions = document.getElementById('editorActions');
+    if (actions) actions.remove();
     showBrowsingView();
-    // Clear draft after save
     try { localStorage.removeItem('draft_' + currentPath); } catch(e) {}
     currentPath = '';
     currentContent = '';

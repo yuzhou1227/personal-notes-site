@@ -471,8 +471,26 @@ body {
 
 /* ─── Editor ─── */
 #editorTextarea::selection { background: #007aff; color: #fff; }
+#editorPreview { font-family: var(--font-sans); color: var(--text-primary); }
+#editorPreview:focus { box-shadow: inset 0 0 0 1px var(--accent); border-radius: 4px; }
 #editorPreview h1, #editorPreview h2, #editorPreview h3 { margin-top: 0; }
 #editorPreview h1:first-child { margin-top: 0; }
 #editorPreview p:first-child { margin-top: 0; }
+#editorPreview h1 { font-size: 26px; font-weight: 700; margin: 0 0 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+#editorPreview h2 { font-size: 20px; font-weight: 600; margin: 28px 0 12px; }
+#editorPreview h3 { font-size: 17px; font-weight: 600; margin: 20px 0 10px; }
+#editorPreview p { margin-bottom: 14px; line-height: 1.8; }
+#editorPreview code { font-family: var(--font-mono); font-size: 13px; background: var(--code-bg); padding: 2px 8px; border-radius: 4px; }
+#editorPreview pre { background: #1a1a1a; padding: 20px 24px; border-radius: var(--radius-md); overflow-x: auto; margin-bottom: 14px; }
+#editorPreview pre code { background: none; padding: 0; color: #e4e4e4; font-size: 13px; }
+#editorPreview blockquote { border-left: 4px solid var(--accent); padding: 12px 16px; margin-bottom: 14px; background: var(--accent-light); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+#editorPreview ul, #editorPreview ol { margin-bottom: 14px; padding-left: 24px; }
+#editorPreview li { margin-bottom: 4px; }
+#editorPreview table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+#editorPreview th, #editorPreview td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; font-size: 14px; }
+#editorPreview th { background: var(--bg); font-weight: 600; }
+#editorPreview img { max-width: 100%; border-radius: 4px; margin: 8px 0; }
+#editorPreview a { color: var(--accent); text-decoration: none; }
 #editorToolbar button:active { background: #007aff !important; color: #fff !important; }
 #editorToolbar button[title="保存到 GitHub"] { margin-left: auto; font-size: 11px; }
+#editorActions button:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
