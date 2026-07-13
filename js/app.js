@@ -38,6 +38,13 @@
       document.getElementById('sidebar').classList.remove('open');
       document.getElementById('sidebarOverlay').classList.remove('open');
     });
+
+    var newBtn = document.getElementById('newNoteQuick');
+    if (newBtn) {
+      newBtn.addEventListener('click', function() {
+        if (typeof createNewNote === 'function') createNewNote();
+      });
+    }
   }
 
   async function loadNotes() {

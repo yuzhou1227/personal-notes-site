@@ -15,17 +15,26 @@ window.__NOTE_BRANCH = 'master';
 </script>
 </head>
 <body>
+<div id="atmosphere"></div>
 <div id="app">
   <nav id="topNav">
     <button id="menuToggle" aria-label="切换菜单">☰</button>
-    <span id="logo">个人笔记</span>
+    <span id="logo"><span class="logo-icon">📓</span>个人笔记</span>
     <div id="searchBox">
+      <span class="search-icon">🔍</span>
       <input type="text" id="searchInput" placeholder="搜索笔记..." />
+    </div>
+    <div id="userArea">
+      <div id="userAvatar">Y</div>
     </div>
   </nav>
 
   <div id="mainLayout">
     <aside id="sidebar">
+      <div id="sidebarHeader">
+        <span class="sidebar-title">目录</span>
+        <button id="newNoteQuick" title="新建笔记">＋</button>
+      </div>
       <div id="fileTree"></div>
     </aside>
 
@@ -37,8 +46,15 @@ window.__NOTE_BRANCH = 'master';
       <div id="breadcrumb"></div>
       <div id="articleContent">
         <div id="welcomeMessage">
-          <h1>个人笔记</h1>
-          <p>推送 .md 文件到 notes/ 目录即可自动加载</p>
+          <div class="welcome-card">
+            <div class="welcome-icon">📓</div>
+            <h1>个人笔记</h1>
+            <p>推送 .md 文件到 <strong>notes/</strong> 目录即可自动加载</p>
+            <div class="welcome-hint">
+              💡 在侧边栏点击笔记浏览 · 悬停文件可重命名/删除<br>
+              ✏️ 点击右下角编辑按钮进入 WYSIWYG 编辑器
+            </div>
+          </div>
         </div>
       </div>
     </main>
