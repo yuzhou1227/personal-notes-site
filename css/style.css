@@ -673,7 +673,7 @@ body {
 }
 
 /* ─── Editor ─── */
-#editorTextarea::selection { background: #0a84ff; color: #fff; }
+#editorTextarea::selection { background: var(--accent); color: #fff; }
 #editorPreview { font-family: var(--font-sans); color: var(--text-primary); }
 #editorPreview:focus { box-shadow: inset 0 0 0 1px var(--accent); border-radius: 4px; }
 #editorPreview h1, #editorPreview h2, #editorPreview h3 { margin-top: 0; }
@@ -695,6 +695,75 @@ body {
 #editorPreview img { max-width: 100%; border-radius: 8px; margin: 8px 0; }
 #editorPreview a { color: var(--accent); text-decoration: none; }
 #editorToolbar { background: var(--surface); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
-#editorToolbar button:active { background: #0a84ff !important; color: #fff !important; }
+#editorToolbar button:active { background: var(--accent) !important; color: #fff !important; }
 #editorToolbar button[title="保存到 GitHub"] { margin-left: auto; font-size: 11px; }
 #editorActions button:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+
+/* ─── Outline / Table of Contents ─── */
+#outlineNav {
+  position: fixed;
+  top: calc(var(--nav-height) + 80px);
+  right: 16px;
+  width: 200px;
+  z-index: 50;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 12px 0;
+  max-height: 60vh;
+  overflow-y: auto;
+  transition: transform .25s ease, opacity .25s ease;
+  font-size: 13px;
+}
+#outlineHeader {
+  padding: 0 14px 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+#outlineToggle { cursor: pointer; }
+#outlineList { list-style: none; padding: 0; margin: 0; }
+.outline-item {
+  padding: 5px 14px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background .1s, color .15s;
+  border-left: 2px solid transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.outline-item:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+.outline-item.active {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  font-weight: 500;
+}
+.outline-item.level-2 { padding-left: 24px; font-size: 12.5px; }
+.outline-item.level-3 { padding-left: 34px; font-size: 12px; }
+#outlineNav.collapsed #outlineList { display: none; }
+#outlineNav.collapsed { width: auto; padding: 8px 12px; }
+#outlineNav.collapsed #outlineHeader { padding: 0; }
+
+@media (max-width: 1023px) {
+  #outlineNav { display: none; }
+}
+
+/* ─── KaTeX Error ─── */
+.katex-error {
+  color: #ff3b30;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 2px 6px;
+  background: rgba(255, 59, 48, 0.08);
+  border-radius: 4px;
+}

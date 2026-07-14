@@ -1,5 +1,5 @@
-// js/markdown.js ¡ª Markdown renderer (embedded marked library, MIT license)
-// marked (c) 2018-present, Christopher Jeffrey ¡ª https://github.com/markedjs/marked
+// js/markdown.js ï¿½ï¿½ Markdown renderer (embedded marked library, MIT license)
+// marked (c) 2018-present, Christopher Jeffrey ï¿½ï¿½ https://github.com/markedjs/marked
 
 (function() {
 /**
@@ -78,7 +78,72 @@ if(__exports != exports)module.exports = exports;return module.exports}));
       return marked.parse(md);
     } catch (e) {
       console.error('Markdown render error:', e);
-      return '<p>äÖÈ¾´íÎó</p>';
+      return '<p>æ¸²æŸ“å‡ºé”™</p>';
     }
   };
+
+  // Custom code renderer with highlight.js support
+  try {
+    window.__markedRenderer = new marked.Renderer();
+    var origCode = window.__markedRenderer.code;
+    window.__markedRenderer.code = function(token) {
+      var lang = token.lang || '';
+      var text = token.text || '';
+      if (lang && lang !== 'mermaid') {
+        if (window.hljs && hljs.getLanguage(lang)) {
+          try {
+            var highlighted = hljs.highlight(text, { language: lang, ignoreIllegals: true }).value;
+            return '<pre><code class="hljs language-' + lang + '">' + highlighted + '</code></pre>';
+          } catch(e) {}
+        }
+      }
+      if (origCode) return origCode.call(window.__markedRenderer, token);
+      return '<pre><code>' + escapeHtml(text) + '</code></pre>';
+    };
+    marked.use({ renderer: window.__markedRenderer });
+  } catch(e) {
+    console.warn('Failed to register custom renderer:', e);
+  }
+
+  // KaTeX renderer for inline and block math
+  var r = window.__markedRenderer;
+  if (r) {
+    var origText = r.text;
+    r.text = function(token) {
+      var text = token.text || '';
+      if (window.katex && text.indexOf('$') !== -1) {
+        text = text.replace(/\$([^$]+?)\$/g, function(match, formula) {
+          try {
+            return katex.renderToString(formula, { throwOnError: false, displayMode: false });
+          } catch(e) {
+            return '<span class="katex-error">' + formula + '</span>';
+          }
+        });
+      }
+      if (origText) return origText.call(r, { text: text });
+      return escapeHtml(text);
+    };
+
+    var origParagraph = r.paragraph;
+    r.paragraph = function(token) {
+      var text = token.text || '';
+      if (window.katex && text.indexOf('$$') !== -1) {
+        text = text.replace(/\$\$(.+?)\$\$/g, function(match, formula) {
+          try {
+            return katex.renderToString(formula.trim(), { throwOnError: false, displayMode: true });
+          } catch(e) {
+            return '<div class="katex-error">' + formula + '</div>';
+          }
+        });
+      }
+      if (origParagraph) return origParagraph.call(r, { text: text });
+      return '<p>' + escapeHtml(text) + '</p>';
+    };
+  }
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
 })();

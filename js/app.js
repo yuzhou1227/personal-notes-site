@@ -7,6 +7,39 @@
   let branch = 'main';
   let currentPath = null;
 
+  function lazyLoadScript(src) {
+    return new Promise(function(resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.body.appendChild(s);
+    });
+  }
+
+  function lazyLoadCSS(href) {
+    return new Promise(function(resolve, reject) {
+      var l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = href;
+      l.onload = resolve;
+      l.onerror = reject;
+      document.head.appendChild(l);
+    });
+  }
+
+  function initMermaid() {
+    if (window.mermaid) {
+      var theme = (document.documentElement.getAttribute('data-theme') === 'dark') ? 'dark' : 'default';
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: theme,
+        securityLevel: 'loose',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif'
+      });
+    }
+  }
+
   function initApp() {
     owner = window.__NOTE_OWNER || '';
     repo = window.__NOTE_REPO || '';
@@ -43,6 +76,13 @@
     if (newBtn) {
       newBtn.addEventListener('click', function() {
         if (typeof createNewNote === 'function') createNewNote();
+      });
+    }
+
+    var themeBtn = document.getElementById('themeToggle');
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function() {
+        if (window.Theme) window.Theme.toggle();
       });
     }
   }
@@ -259,7 +299,19 @@
     }
   }
 
-  function showNote(path, mdContent, title) {
+  async function showNote(path, mdContent, title) {
+    if (mdContent.indexOf('$') !== -1) {
+      if (!window.katex) {
+        await lazyLoadScript('js/katex.js');
+        await lazyLoadCSS('css/katex.css');
+      }
+    }
+    if (mdContent.indexOf('```mermaid') !== -1) {
+      if (!window.mermaid) {
+        await lazyLoadScript('js/mermaid.js');
+        initMermaid();
+      }
+    }
     const html = renderMarkdown(mdContent);
 
     const parts = path.replace(/\.md$/i, '').split('/');
@@ -274,6 +326,25 @@
     if (wm) wm.style.display = 'none';
     var ac = document.getElementById('articleContent');
     if (ac) ac.innerHTML = html;
+    if (window.mermaid) {
+      var mermaidBlocks = document.querySelectorAll('code.language-mermaid');
+      mermaidBlocks.forEach(function(block) {
+        var pre = block.parentElement;
+        var text = block.textContent;
+        var container = document.createElement('div');
+        container.className = 'mermaid';
+        container.textContent = text.trim();
+        pre.parentElement.replaceChild(container, pre);
+      });
+      try {
+        mermaid.run({ nodes: document.querySelectorAll('.mermaid') });
+      } catch(e) {
+        console.warn('Mermaid render error:', e);
+      }
+    }
+    if (window.Outline) {
+      setTimeout(function() { Outline.build(); }, 50);
+    }
     var ct = document.getElementById('content');
     if (ct) ct.scrollTop = 0;
 
