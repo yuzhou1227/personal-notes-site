@@ -1,8 +1,8 @@
 (function() {
   var currentPath = '';
   var currentContent = '';
-  var editorInstance = null;
-  var STORAGE_KEY_PREFIX = 'draft_';
+  var quillInstance = null;
+  var STORAGE_KEY_PREFIX = 'quill_draft_';
 
   function enter(path) {
     currentPath = path;
@@ -36,7 +36,7 @@
 
     var themeBtn = document.createElement('button');
     themeBtn.textContent = '🌓';
-    themeBtn.title = '切换编辑器主题';
+    themeBtn.title = '切换主题';
     themeBtn.style.cssText = 'padding:6px 10px;background:transparent;border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;margin-left:auto';
     themeBtn.addEventListener('click', function() {
       if (window.Theme) window.Theme.toggle();
@@ -52,50 +52,48 @@
     container.appendChild(toolbarContainer);
 
     var editorEl = document.createElement('div');
-    editorEl.id = 'toastuiEditor';
-    editorEl.style.cssText = 'margin-top:12px;min-height:calc(100vh - 300px)';
+    editorEl.id = 'quillEditor';
+    editorEl.style.cssText = 'margin-top:12px;min-height:400px;height:calc(100vh - 320px)';
     container.appendChild(editorEl);
 
-    var theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    var toolbarOptions = [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ list: 'ordered' }, { list: 'bullet' }, { list: 'check' }],
+      ['blockquote', 'code-block'],
+      [{ align: [] }],
+      ['link', 'image'],
+      ['clean']
+    ];
 
-    editorInstance = new toastui.Editor({
-      el: editorEl,
-      height: 'auto',
-      minHeight: 'calc(100vh - 350px)',
-      initialEditType: 'wysiwyg',
-      initialValue: currentContent,
-      previewStyle: 'vertical',
-      theme: theme,
-      usageStatistics: false,
-      hideModeSwitch: false,
-      toolbarItems: [
-        ['heading', 'bold', 'italic', 'strike'],
-        ['hr', 'quote'],
-        ['ul', 'ol', 'task'],
-        ['table', 'link'],
-        ['code', 'codeblock'],
-        ['scrollSync']
-      ],
-      hooks: {
-        addImageBlobHook: function(blob, callback) {
-          uploadImage(blob, callback);
-        }
-      }
+    quillInstance = new Quill('#quillEditor', {
+      modules: {
+        toolbar: toolbarOptions
+      },
+      placeholder: '开始写笔记...',
+      theme: 'snow'
     });
 
+    // Set initial content
+    if (currentContent) {
+      var tempHtml = renderMarkdown(currentContent);
+      quillInstance.root.innerHTML = tempHtml;
+    }
+
+    // Restore draft
     var draft = localStorage.getItem(STORAGE_KEY_PREFIX + currentPath);
     if (draft) {
-      editorInstance.setMarkdown(draft);
+      try { quillInstance.root.innerHTML = draft; } catch(e) {}
       statusSpan.textContent = '草稿已恢复';
     }
 
+    // Auto-save draft
     var autoSaveTimer = null;
-    editorInstance.on('change', function() {
+    quillInstance.on('text-change', function() {
       clearTimeout(autoSaveTimer);
       autoSaveTimer = setTimeout(function() {
         try {
-          var md = editorInstance.getMarkdown();
-          localStorage.setItem(STORAGE_KEY_PREFIX + currentPath, md);
+          localStorage.setItem(STORAGE_KEY_PREFIX + currentPath, quillInstance.root.innerHTML);
           statusSpan.textContent = '草稿已保存';
           statusSpan.style.color = '#34c759';
           setTimeout(function() { statusSpan.style.color = ''; }, 2000);
@@ -103,6 +101,7 @@
       }, 3000);
     });
 
+    // Ctrl+S
     editorEl.addEventListener('keydown', function(e) {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
@@ -110,12 +109,22 @@
       }
     });
 
-    setTimeout(function() { editorInstance.focus(); }, 100);
+    setTimeout(function() { quillInstance.focus(); }, 100);
+  }
+
+  function getMarkdownFromQuill() {
+    if (!quillInstance) return '';
+    var html = quillInstance.root.innerHTML;
+    if (window.turndown) {
+      var turndownService = new turndown();
+      return turndownService.turndown(html);
+    }
+    return html;
   }
 
   function doSave() {
-    if (!editorInstance) return;
-    var md = editorInstance.getMarkdown();
+    if (!quillInstance) return;
+    var md = getMarkdownFromQuill();
     currentContent = md;
     saveToGitHub(md);
   }
@@ -175,50 +184,60 @@
     }
   }
 
-  function uploadImage(blob, callback) {
-    var token = getToken();
-    if (!token) { showTokenDialog(); return; }
+  function uploadImage(callback) {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = function() {
+      var file = input.files[0];
+      if (!file) return;
+      var token = getToken();
+      if (!token) { showTokenDialog(); return; }
 
-    var reader = new FileReader();
-    reader.onload = async function(e) {
-      var base64 = e.target.result.split(',')[1];
-      var ext = blob.name ? blob.name.split('.').pop() : 'png';
-      var imageName = 'img-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6) + '.' + ext;
-      var imagePath = 'assets/images/' + imageName;
+      var reader = new FileReader();
+      reader.onload = async function(e) {
+        var base64 = e.target.result.split(',')[1];
+        var ext = file.name ? file.name.split('.').pop() : 'png';
+        var imageName = 'img-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6) + '.' + ext;
+        var imagePath = 'assets/images/' + imageName;
 
-      showToast('正在上传图片...');
+        showToast('正在上传图片...');
 
-      try {
-        var headers = { Authorization: 'token ' + token, Accept: 'application/vnd.github.v3+json' };
-        var url = 'https://api.github.com/repos/' + window.__NOTE_OWNER + '/' + window.__NOTE_REPO + '/contents/' + imagePath;
-        var body = {
-          message: 'add image: ' + imageName,
-          content: base64,
-          branch: window.__NOTE_BRANCH || 'master'
-        };
+        try {
+          var headers = { Authorization: 'token ' + token, Accept: 'application/vnd.github.v3+json' };
+          var url = 'https://api.github.com/repos/' + window.__NOTE_OWNER + '/' + window.__NOTE_REPO + '/contents/' + imagePath;
+          var body = {
+            message: 'add image: ' + imageName,
+            content: base64,
+            branch: window.__NOTE_BRANCH || 'master'
+          };
 
-        var resp = await fetch(url, { method: 'PUT', headers: headers, body: JSON.stringify(body) });
-        if (resp.ok) {
-          var imgUrl = '../' + imagePath;
-          callback(imgUrl, imageName);
-          showToast('图片已上传');
-        } else {
-          showToast('图片上传失败');
-          callback('', '');
+          var resp = await fetch(url, { method: 'PUT', headers: headers, body: JSON.stringify(body) });
+          if (resp.ok) {
+            var imgUrl = '../' + imagePath;
+            if (quillInstance) {
+              var range = quillInstance.getSelection(true);
+              quillInstance.insertEmbed(range.index, 'image', imgUrl);
+            }
+            showToast('图片已上传');
+          } else {
+            showToast('图片上传失败');
+          }
+        } catch(err) {
+          showToast('上传出错: ' + err.message);
         }
-      } catch(err) {
-        showToast('上传出错: ' + err.message);
-        callback('', '');
-      }
+      };
+      reader.readAsDataURL(file);
     };
-    reader.readAsDataURL(blob);
+    input.click();
   }
 
   function exit() {
-    if (editorInstance) {
-      try { editorInstance.destroy(); } catch(e) {}
-      editorInstance = null;
+    if (quillInstance) {
+      quillInstance = null;
     }
+    var container = document.getElementById('quillEditor');
+    if (container) { container.innerHTML = ''; }
     var eb = document.getElementById('editBtn');
     if (eb) eb.style.display = 'block';
     showBrowsingView();
@@ -229,7 +248,6 @@
 
   window.Editor = { enter: enter, exit: exit };
 
-  // Re-initialize sidebar actions and context menu (from old code)
   function addSidebarActions() {
     var sidebar = document.getElementById('sidebar');
     var header = document.createElement('div');
