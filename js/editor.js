@@ -324,7 +324,10 @@
         Cache.setFile(fullPath, { sha: newSha, title: name.replace(/\.md$/, ''), content: contentText });
         Search.buildIndex();
         showToast('已创建: ' + name);
-        await fetchAndSyncNotes();
+        var c = Cache.get();
+        var newTree = buildFileTreeFromCache(c ? c.files : {});
+        Cache.setFileTree(newTree);
+        FileTree.render('fileTree', newTree, onNoteSelect);
         setTimeout(function() { onNoteSelect(fullPath); }, 300);
       } else {
         showToast('创建失败');
@@ -380,7 +383,10 @@
       }
 
       showToast('已重命名: ' + newName);
-      await fetchAndSyncNotes();
+      var c2 = Cache.get();
+      var renamedTree = buildFileTreeFromCache(c2 ? c2.files : {});
+      Cache.setFileTree(renamedTree);
+      FileTree.render('fileTree', renamedTree, onNoteSelect);
       setTimeout(function() { onNoteSelect(newPath); }, 300);
     } catch (e) {
       showToast('重命名失败: ' + e.message);
