@@ -409,12 +409,12 @@
       var delResp = await fetch(baseUrl + '/contents/notes/' + path, { method: 'DELETE', headers: headers, body: JSON.stringify(delBody) });
 
       if (delResp.ok) {
-        var cache = Cache.get();
+        var cache = Cache.get() || { version: 1, lastUpdated: null, files: {}, fileTree: [] };
         if (cache && cache.files) delete cache.files[path];
         Cache.set(cache);
         Search.buildIndex();
         showToast('已删除');
-        var tree = buildFileTreeFromCache(cache ? cache.files : {});
+        var tree = buildFileTreeFromCache(cache.files);
         Cache.setFileTree(tree);
         FileTree.render('fileTree', tree, onNoteSelect);
         showBrowsingView();
