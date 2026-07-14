@@ -158,7 +158,9 @@
     }
 
     if (changedPaths.length === 0 && cache && cache.fileTree) {
+      Cache.setFileTree(fileTree);
       Cache.setLastUpdated(new Date().toISOString());
+      FileTree.render('fileTree', fileTree, onNoteSelect);
       return;
     }
 
