@@ -31,7 +31,7 @@
     var closeBtn = document.createElement('button');
     closeBtn.className = 'close-btn';
     closeBtn.textContent = '✕ 关闭';
-    closeBtn.onclick = function() { exit(); };
+    closeBtn.onclick = function() { exit(); showBrowsingView(); };
     toolbarContainer.appendChild(closeBtn);
 
     var themeBtn = document.createElement('button');
@@ -260,7 +260,6 @@
     if (container) { container.innerHTML = ''; }
     var eb = document.getElementById('editBtn');
     if (eb) eb.style.display = 'block';
-    showBrowsingView();
     try { localStorage.removeItem(STORAGE_KEY_PREFIX + currentPath); } catch(e) {}
     currentPath = '';
     currentContent = '';
