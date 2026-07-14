@@ -191,7 +191,7 @@
         if (status) { status.textContent = '✓ 已保存'; status.style.color = '#34c759'; }
         showToast('✓ 保存成功');
         localStorage.removeItem(STORAGE_KEY_PREFIX + path);
-        setTimeout(function() { exit(); loadAndShowNote(path); }, 500);
+        setTimeout(function() { exit(); showBrowsingView(); }, 500);
       } else {
         var errText = await putResp.text();
         try { var errJson = JSON.parse(errText); errText = errJson.message; } catch(e2) {}
@@ -414,7 +414,9 @@
         Cache.set(cache);
         Search.buildIndex();
         showToast('已删除');
-        await fetchAndSyncNotes();
+        var tree = buildFileTreeFromCache(cache ? cache.files : {});
+        Cache.setFileTree(tree);
+        FileTree.render('fileTree', tree, onNoteSelect);
         showBrowsingView();
       } else {
         showToast('删除失败');

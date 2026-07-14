@@ -213,6 +213,35 @@
     FileTree.render('fileTree', fileTree, onNoteSelect);
   }
 
+  function buildFileTreeFromCache(files) {
+    const root = [];
+    for (const [filePath, file] of Object.entries(files || {})) {
+      const parts = filePath.split('/');
+      const fileName = parts.pop();
+      let current = root;
+      for (const part of parts) {
+        let dir = current.find(function(n) { return n.type === 'dir' && n.name === part; });
+        if (!dir) {
+          dir = { name: part, type: 'dir', children: [] };
+          current.push(dir);
+        }
+        current = dir.children;
+      }
+      current.push({ name: fileName, type: 'file' });
+    }
+    function sortNodes(nodes) {
+      nodes.sort(function(a, b) {
+        if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+      for (const node of nodes) {
+        if (node.children) sortNodes(node.children);
+      }
+    }
+    sortNodes(root);
+    return root;
+  }
+
   function buildFileTree(notesEntries, dirEntries) {
     const root = [];
 
@@ -489,6 +518,7 @@
   window.getToken = getToken;
   window.fetchAndSyncNotes = fetchAndSyncNotes;
   window.onNoteSelect = onNoteSelect;
+  window.buildFileTreeFromCache = buildFileTreeFromCache;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initApp);
