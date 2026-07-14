@@ -20,24 +20,24 @@
     container.innerHTML = '';
 
     var toolbarContainer = document.createElement('div');
-    toolbarContainer.style.cssText = 'display:flex;gap:8px;padding:8px 0 12px;border-bottom:1px solid var(--border);margin-bottom:0;align-items:center;flex-wrap:wrap';
+    toolbarContainer.id = 'editorToolbar';
 
     var saveBtn = document.createElement('button');
+    saveBtn.className = 'save-btn';
     saveBtn.textContent = '💾 保存';
-    saveBtn.style.cssText = 'padding:6px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:500';
     saveBtn.onclick = function() { doSave(); };
     toolbarContainer.appendChild(saveBtn);
 
     var closeBtn = document.createElement('button');
+    closeBtn.className = 'close-btn';
     closeBtn.textContent = '✕ 关闭';
-    closeBtn.style.cssText = 'padding:6px 14px;background:var(--text-tertiary);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit';
     closeBtn.onclick = function() { exit(); };
     toolbarContainer.appendChild(closeBtn);
 
     var themeBtn = document.createElement('button');
+    themeBtn.className = 'theme-btn';
     themeBtn.textContent = '🌓';
     themeBtn.title = '切换主题';
-    themeBtn.style.cssText = 'padding:6px 10px;background:transparent;border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;margin-left:auto';
     themeBtn.addEventListener('click', function() {
       if (window.Theme) window.Theme.toggle();
     });
@@ -45,7 +45,6 @@
 
     var statusSpan = document.createElement('span');
     statusSpan.id = 'editorSaveStatus';
-    statusSpan.style.cssText = 'font-size:12px;color:var(--text-tertiary);margin-left:12px';
     statusSpan.textContent = '草稿自动保存';
     toolbarContainer.appendChild(statusSpan);
 
@@ -53,8 +52,11 @@
 
     var editorEl = document.createElement('div');
     editorEl.id = 'quillEditor';
-    editorEl.style.cssText = 'margin-top:12px;min-height:400px;height:calc(100vh - 320px)';
     container.appendChild(editorEl);
+
+    var imageHandler = function() {
+      uploadImage();
+    };
 
     var toolbarOptions = [
       [{ header: [1, 2, 3, false] }],
@@ -62,17 +64,35 @@
       [{ list: 'ordered' }, { list: 'bullet' }, { list: 'check' }],
       ['blockquote', 'code-block'],
       [{ align: [] }],
-      ['link', 'image'],
+      ['link'],
+      ['image'],
       ['clean']
     ];
 
     quillInstance = new Quill('#quillEditor', {
       modules: {
-        toolbar: toolbarOptions
+        toolbar: {
+          container: toolbarOptions,
+          handlers: {
+            image: imageHandler
+          }
+        }
       },
       placeholder: '开始写笔记...',
       theme: 'snow'
     });
+
+    // Override Quill's default image handler
+    var toolbar = quillInstance.getModule('toolbar');
+    if (toolbar) {
+      var imageBtn = toolbar.container.querySelector('.ql-image');
+      if (imageBtn) {
+        imageBtn.onclick = function(e) {
+          e.preventDefault();
+          uploadImage();
+        };
+      }
+    }
 
     // Set initial content
     if (currentContent) {

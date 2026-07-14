@@ -352,9 +352,6 @@
     var editBtn = document.createElement('button');
     editBtn.id = 'editBtn';
     editBtn.textContent = '✏️ 编辑';
-    editBtn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:50;padding:10px 20px;background:#007aff;color:#fff;border:none;border-radius:20px;font-size:14px;cursor:pointer;box-shadow:0 4px 16px rgba(0,122,255,0.3);font-family:inherit;transition:transform .15s,box-shadow .15s';
-    editBtn.onmouseover = function() { this.style.transform = 'scale(1.05)'; this.style.boxShadow = '0 6px 24px rgba(0,122,255,0.4)'; };
-    editBtn.onmouseout = function() { this.style.transform = 'scale(1)'; this.style.boxShadow = '0 4px 16px rgba(0,122,255,0.3)'; };
     editBtn.onclick = function() {
       if (!getToken()) { showTokenDialog(); return; }
       Editor.enter(path);

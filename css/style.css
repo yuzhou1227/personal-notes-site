@@ -767,3 +767,31 @@ body {
   background: rgba(255, 59, 48, 0.08);
   border-radius: 4px;
 }
+
+/* ─── Edit Button ─── */
+#editBtn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 50;
+  padding: 10px 20px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(10, 132, 255, 0.3);
+  transition: transform .15s, box-shadow .15s;
+}
+
+#editBtn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 24px rgba(10, 132, 255, 0.4);
+}
+
+#editBtn:active {
+  transform: scale(0.97);
+}
